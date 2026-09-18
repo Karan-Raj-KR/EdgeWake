@@ -51,11 +51,27 @@
   <!-- MAIN OPERATIONAL WORKSPACE -->
   <main class="workspace">
 
-    <!-- PAGE HEADER -->
+    <!-- PAGE HEADER WITH FLEET HEALTH VISUAL -->
     <div class="page-header">
       <div>
         <h1 class="page-title">Fleet Overview</h1>
         <p class="page-description">Monitor deployed EdgeWake edge nodes, wake events, and device telemetry.</p>
+      </div>
+
+      <!-- Compact Fleet Health Segmented Visual -->
+      <div class="fleet-health-widget" aria-label="Fleet Health Distribution">
+        <div class="health-widget-head">
+          <span class="health-widget-title">Fleet Availability</span>
+          <span id="fleetHealthPercent" class="health-widget-val">0% Online</span>
+        </div>
+        <div class="health-segmented-bar">
+          <div id="barOnline" class="health-bar-segment seg-online" style="width: 0%;" title="Online"></div>
+          <div id="barOffline" class="health-bar-segment seg-offline" style="width: 100%;" title="Offline"></div>
+        </div>
+        <div class="health-widget-legend">
+          <span class="legend-item"><span class="legend-dot dot-online"></span><span id="legendOnlineText">0 Online</span></span>
+          <span class="legend-item"><span class="legend-dot dot-offline"></span><span id="legendOfflineText">2 Offline</span></span>
+        </div>
       </div>
     </div>
 
@@ -112,6 +128,70 @@
       </div>
     </section>
 
+    <!-- NEW SECTION: OPERATIONAL ANALYTICS (3 FUNCTIONAL VISUAL CARDS) -->
+    <section class="content-section" aria-label="Operational Analytics">
+      <div class="section-header">
+        <div>
+          <h2 class="section-title">Operational Analytics</h2>
+          <p class="section-subtitle">Real-time edge inference performance and event activity patterns.</p>
+        </div>
+        <span class="tag tag-neutral">Live Telemetry Feed</span>
+      </div>
+
+      <div class="analytics-grid">
+
+        <!-- Chart 1: Wake Events Activity -->
+        <div class="analytics-card">
+          <div class="analytics-card-header">
+            <span class="analytics-card-title">Wake Event Activity</span>
+            <span id="analyticsEventTotal" class="analytics-stat-pill">0 Events</span>
+          </div>
+          <div class="chart-wrapper">
+            <svg id="chartEvents" class="metric-chart" viewBox="0 0 320 110" preserveAspectRatio="none">
+              <!-- Rendered via JS -->
+            </svg>
+          </div>
+          <div class="chart-axis-labels">
+            <span>Past Activity</span>
+            <span>Latest</span>
+          </div>
+        </div>
+
+        <!-- Chart 2: Inference Latency Trend -->
+        <div class="analytics-card">
+          <div class="analytics-card-header">
+            <span class="analytics-card-title">Inference Latency Trend</span>
+            <span id="analyticsLatencyStat" class="analytics-stat-pill">Ref: &lt;100ms</span>
+          </div>
+          <div class="chart-wrapper">
+            <svg id="chartLatency" class="metric-chart" viewBox="0 0 320 110" preserveAspectRatio="none">
+              <!-- Rendered via JS -->
+            </svg>
+          </div>
+          <div class="chart-axis-labels">
+            <span>Historical Detections</span>
+            <span class="target-indicator">--- 100ms Threshold</span>
+          </div>
+        </div>
+
+        <!-- Chart 3: Node Activity Comparison -->
+        <div class="analytics-card">
+          <div class="analytics-card-header">
+            <span class="analytics-card-title">Fleet Activity Comparison</span>
+            <span id="analyticsRatioStat" class="analytics-stat-pill">2 Deployed Nodes</span>
+          </div>
+          <div id="chartComparison" class="comparison-bars-container">
+            <!-- Rendered via JS -->
+          </div>
+          <div class="chart-axis-labels">
+            <span>Node ID</span>
+            <span>Total Triggers</span>
+          </div>
+        </div>
+
+      </div>
+    </section>
+
     <!-- DEVICE FLEET TABLE SECTION (PRIMARY COMPONENT) -->
     <section class="content-section" aria-label="Device Fleet">
       <div class="section-header">
@@ -131,13 +211,13 @@
               <th style="width: 110px;">Node ID</th>
               <th>Registered Location</th>
               <th style="width: 110px;">Status</th>
-              <th style="width: 160px;">Heap Usage</th>
-              <th style="width: 160px;">PSRAM</th>
-              <th style="width: 120px;">Wi-Fi Signal</th>
-              <th style="width: 110px;">Latency</th>
+              <th style="width: 170px;">Heap Usage</th>
+              <th style="width: 170px;">PSRAM</th>
+              <th style="width: 130px;">Wi-Fi Signal</th>
+              <th style="width: 120px;">Latency</th>
               <th style="width: 100px;">Uptime</th>
-              <th style="width: 100px;">Activations</th>
-              <th style="width: 150px;">Last Heartbeat</th>
+              <th style="width: 90px;">Activations</th>
+              <th style="width: 130px;">Last Heartbeat</th>
             </tr>
           </thead>
           <tbody id="deviceTableBody">
@@ -154,7 +234,7 @@
       <section class="content-section" aria-label="Wake Event Log">
         <div class="section-header">
           <div>
-            <h2 class="section-title">Wake Events</h2>
+            <h2 class="section-title">Wake Event Audit Log</h2>
             <p class="section-subtitle">Chronological record of "Cosmos" detections reported by edge devices.</p>
           </div>
         </div>
@@ -165,10 +245,10 @@
               <tr>
                 <th style="width: 90px;">Time</th>
                 <th style="width: 90px;">Device</th>
-                <th>Type</th>
+                <th>Event Type</th>
                 <th>Location</th>
-                <th style="width: 100px;">Confidence</th>
-                <th style="width: 80px;">Latency</th>
+                <th style="width: 110px;">Confidence</th>
+                <th style="width: 90px;">Latency</th>
               </tr>
             </thead>
             <tbody id="eventTableBody">
@@ -203,8 +283,8 @@
                 </span>
               </div>
               <div class="node-meta">
-                <span>Desk 01</span>
-                <span>2.4 GHz (CH 6)</span>
+                <span class="node-detail-line">Desk 01 · 2.4 GHz (CH 6)</span>
+                <span id="schematicMeta-EW-001" class="node-detail-sub">Heartbeat: Never · 0 activations</span>
               </div>
             </div>
           </div>
@@ -212,7 +292,7 @@
           <!-- Schematic Link Line -->
           <div class="schematic-link">
             <div class="link-line"></div>
-            <span class="link-label">Facility Network Corridor</span>
+            <span class="link-label">Facility Telemetry Corridor</span>
             <div class="link-line"></div>
           </div>
 
@@ -230,8 +310,8 @@
                 </span>
               </div>
               <div class="node-meta">
-                <span>Desk 02</span>
-                <span>2.4 GHz (CH 11)</span>
+                <span class="node-detail-line">Desk 02 · 2.4 GHz (CH 11)</span>
+                <span id="schematicMeta-EW-002" class="node-detail-sub">Heartbeat: Never · 0 activations</span>
               </div>
             </div>
           </div>
@@ -240,12 +320,16 @@
 
     </div>
 
-    <!-- BOTTOM SECTION: ASR TRANSCRIPTS -->
+    <!-- BOTTOM SECTION: ASR TRANSCRIPTS WITH ANALYTICS BANNER -->
     <section class="content-section" aria-label="Speech Transcripts">
       <div class="section-header">
         <div>
           <h2 class="section-title">Speech Transcripts</h2>
           <p class="section-subtitle">Transcriptions from subsequent audio streams processed via remote ASR.</p>
+        </div>
+        <div id="transcriptDistribution" class="transcript-mini-analytics">
+          <span class="mini-label">Device Ingestion:</span>
+          <span id="transcriptDistributionText" class="mini-val">0 total logs</span>
         </div>
       </div>
 

@@ -1,6 +1,6 @@
 /**
- * EDGEWAKE MISSION CONTROL // CLIENT LOGIC
- * Real-time data synchronization, table rendering, and state management.
+ * EDGEWAKE MISSION CONTROL // CLIENT LOGIC & FUNCTIONAL ANALYTICS
+ * Real-time data synchronization, table rendering, SVG trend charts, and state management.
  * Strictly adheres to enterprise data integrity: zero synthetic values.
  */
 
@@ -84,14 +84,178 @@ setInterval(updateClocks, 1000);
 updateClocks();
 
 /* ==========================================================================
+   SVG ANALYTICAL CHARTS PIPELINE (ZERO GRADIENTS / ZERO FAKE DATA)
+   ========================================================================== */
+
+function renderOperationalAnalytics() {
+  // 1. Wake Event Activity Bar Chart
+  const eventsSvg = qs("#chartEvents");
+  const eventTotalPill = qs("#analyticsEventTotal");
+  if (eventsSvg) {
+    if (events.length === 0) {
+      if (eventTotalPill) eventTotalPill.textContent = "0 Events";
+      eventsSvg.innerHTML = `
+        <line x1="20" y1="85" x2="300" y2="85" stroke="#D7DAD5" stroke-width="1" />
+        <line x1="20" y1="50" x2="300" y2="50" stroke="#E5E7E3" stroke-width="1" stroke-dasharray="3,3" />
+        <text x="160" y="54" text-anchor="middle" font-size="11" fill="#8C949D" font-family="Inter, sans-serif">No wake events recorded yet</text>
+      `;
+    } else {
+      if (eventTotalPill) eventTotalPill.textContent = `${events.length} Events Logged`;
+
+      // Group recent events into 8 sequential time slices or bins
+      const binCount = 8;
+      const bins = new Array(binCount).fill(0);
+      const recent = events.slice(0, 32);
+      recent.forEach((e, idx) => {
+        const b = Math.min(binCount - 1, Math.floor((idx / recent.length) * binCount));
+        bins[binCount - 1 - b]++;
+      });
+
+      const maxVal = Math.max(1, Math.max(...bins));
+      const chartW = 280;
+      const chartH = 70;
+      const startX = 25;
+      const baseY = 90;
+      const barW = Math.floor(chartW / binCount) - 8;
+
+      let rects = `
+        <line x1="20" y1="${baseY}" x2="305" y2="${baseY}" stroke="#D7DAD5" stroke-width="1" />
+        <line x1="20" y1="45" x2="305" y2="45" stroke="#E5E7E3" stroke-width="1" stroke-dasharray="3,3" />
+      `;
+
+      bins.forEach((cnt, i) => {
+        const x = startX + i * (barW + 8);
+        const h = cnt > 0 ? Math.max(4, Math.round((cnt / maxVal) * chartH)) : 0;
+        const y = baseY - h;
+        const fill = cnt > 0 ? "#2F5D7C" : "transparent";
+        rects += `<rect x="${x}" y="${y}" width="${barW}" height="${h}" fill="${fill}" rx="2">
+          <title>${cnt} event(s)</title>
+        </rect>`;
+      });
+
+      eventsSvg.innerHTML = rects;
+    }
+  }
+
+  // 2. Inference Latency Trend Line Chart
+  const latencySvg = qs("#chartLatency");
+  const latencyStatPill = qs("#analyticsLatencyStat");
+  if (latencySvg) {
+    const validEvents = events
+      .filter((e) => e.inferenceLatencyMs != null && !isNaN(Number(e.inferenceLatencyMs)))
+      .slice(0, 20)
+      .reverse();
+
+    if (validEvents.length === 0) {
+      if (latencyStatPill) latencyStatPill.textContent = "Ref: <100ms";
+      latencySvg.innerHTML = `
+        <line x1="20" y1="85" x2="300" y2="85" stroke="#D7DAD5" stroke-width="1" />
+        <line x1="20" y1="48" x2="300" y2="48" stroke="#B7791F" stroke-width="1" stroke-dasharray="3,3" />
+        <text x="302" y="52" text-anchor="end" font-size="9" fill="#B7791F" font-family="JetBrains Mono, monospace">100ms</text>
+        <text x="160" y="54" text-anchor="middle" font-size="11" fill="#8C949D" font-family="Inter, sans-serif">Awaiting hardware inferencing benchmarks</text>
+      `;
+    } else {
+      const latencies = validEvents.map((e) => Number(e.inferenceLatencyMs));
+      const avg = Math.round(latencies.reduce((a, b) => a + b, 0) / latencies.length);
+      if (latencyStatPill) latencyStatPill.textContent = `Avg: ${avg}ms (N=${latencies.length})`;
+
+      const maxLat = Math.max(160, ...latencies);
+      const chartW = 270;
+      const startX = 25;
+      const baseY = 90;
+      const topY = 20;
+      const rangeY = baseY - topY;
+
+      // 100ms threshold reference line
+      const threshY = Math.round(baseY - (100 / maxLat) * rangeY);
+
+      let content = `
+        <line x1="20" y1="${baseY}" x2="305" y2="${baseY}" stroke="#D7DAD5" stroke-width="1" />
+        <line x1="20" y1="${threshY}" x2="305" y2="${threshY}" stroke="#B7791F" stroke-width="1" stroke-dasharray="3,3" />
+        <text x="302" y="${threshY - 3}" text-anchor="end" font-size="9" fill="#B7791F" font-family="JetBrains Mono, monospace">100ms</text>
+      `;
+
+      if (latencies.length === 1) {
+        const ptY = Math.round(baseY - (latencies[0] / maxLat) * rangeY);
+        content += `<circle cx="160" cy="${ptY}" r="4" fill="${latencies[0] <= 100 ? "#2F7D4A" : "#B7791F"}"><title>${latencies[0]} ms</title></circle>`;
+      } else {
+        const step = chartW / (latencies.length - 1);
+        const points = latencies.map((val, i) => {
+          const px = Math.round(startX + i * step);
+          const py = Math.round(baseY - (val / maxLat) * rangeY);
+          return `${px},${py}`;
+        }).join(" ");
+
+        content += `<polyline fill="none" stroke="#2F5D7C" stroke-width="2" points="${points}" />`;
+        latencies.forEach((val, i) => {
+          const px = Math.round(startX + i * step);
+          const py = Math.round(baseY - (val / maxLat) * rangeY);
+          const dotColor = val <= 100 ? "#2F7D4A" : "#B7791F";
+          content += `<circle cx="${px}" cy="${py}" r="3" fill="${dotColor}"><title>${val} ms</title></circle>`;
+        });
+      }
+
+      latencySvg.innerHTML = content;
+    }
+  }
+
+  // 3. Node Activity Comparison Bars
+  const compContainer = qs("#chartComparison");
+  const ratioStatPill = qs("#analyticsRatioStat");
+  if (compContainer) {
+    const totalActs = devices.reduce((sum, d) => sum + (d.activationCount || 0), 0);
+    if (ratioStatPill) {
+      ratioStatPill.textContent = `${totalActs} Total Triggers`;
+    }
+
+    if (devices.length === 0) {
+      compContainer.innerHTML = `<span style="font-size: 11px; color: #8C949D; margin: auto;">No devices registered</span>`;
+    } else {
+      const maxActs = Math.max(1, Math.max(...devices.map((d) => d.activationCount || 0)));
+      compContainer.innerHTML = devices.map((d) => {
+        const count = d.activationCount || 0;
+        const widthPct = Math.round((count / maxActs) * 100);
+        return `
+          <div class="comp-bar-item">
+            <div class="comp-bar-label">
+              <span class="comp-node-name">${escapeHtml(d.deviceId)} · ${escapeHtml(d.location || "Unassigned")}</span>
+              <span class="comp-node-count">${count} trigger${count === 1 ? "" : "s"}</span>
+            </div>
+            <div class="comp-bar-track">
+              <div class="comp-bar-fill" style="width: ${widthPct}%;"></div>
+            </div>
+          </div>
+        `;
+      }).join("");
+    }
+  }
+}
+
+/* ==========================================================================
    DASHBOARD RENDERING PIPELINE
    ========================================================================== */
 
 function render() {
-  // 1. SUMMARY STRIP METRICS
+  // 1. FLEET HEALTH WIDGET (DISTRIBUTION BAR)
   const registeredCount = devices.length;
   const onlineCount = devices.filter((d) => d.status === "online").length;
+  const offlineCount = Math.max(0, registeredCount - onlineCount);
+  const onlinePct = registeredCount > 0 ? Math.round((onlineCount / registeredCount) * 100) : 0;
+  const offlinePct = 100 - onlinePct;
 
+  const barOnline = qs("#barOnline");
+  const barOffline = qs("#barOffline");
+  const fleetHealthPercent = qs("#fleetHealthPercent");
+  const legendOnlineText = qs("#legendOnlineText");
+  const legendOfflineText = qs("#legendOfflineText");
+
+  if (barOnline) barOnline.style.width = `${onlinePct}%`;
+  if (barOffline) barOffline.style.width = `${offlinePct}%`;
+  if (fleetHealthPercent) fleetHealthPercent.textContent = `${onlinePct}% Online`;
+  if (legendOnlineText) legendOnlineText.textContent = `${onlineCount} Online`;
+  if (legendOfflineText) legendOfflineText.textContent = `${offlineCount} Offline`;
+
+  // 2. SUMMARY STRIP METRICS
   qs("#metricRegistered").textContent = registeredCount;
   qs("#metricOnline").textContent = onlineCount;
 
@@ -122,7 +286,10 @@ function render() {
   // Transcripts
   qs("#metricTranscripts").textContent = transcripts.length;
 
-  // 2. FLEET TABLE
+  // 3. OPERATIONAL ANALYTICS SECTION
+  renderOperationalAnalytics();
+
+  // 4. FLEET TABLE
   const tableBody = qs("#deviceTableBody");
   if (tableBody) {
     if (devices.length === 0) {
@@ -197,9 +364,12 @@ function render() {
         }
 
         // Inference Latency
-        const latencyCell = (t && t.inferenceLatencyMs != null)
-          ? `<span class="cell-mono">${t.inferenceLatencyMs} ms</span>`
-          : "—";
+        let latencyCell = "—";
+        if (t && t.inferenceLatencyMs != null) {
+          const latVal = Number(t.inferenceLatencyMs);
+          const badgeClass = latVal <= 100 ? "badge-online" : "badge-warning";
+          latencyCell = `<span class="badge ${badgeClass}">${latVal} ms</span>`;
+        }
 
         // Uptime
         const uptimeCell = (t && t.uptimeSeconds != null)
@@ -230,7 +400,7 @@ function render() {
     }
   }
 
-  // 3. UPDATE SCHEMATIC ROOM BADGES
+  // 5. UPDATE SCHEMATIC ROOM BADGES & METADATA
   devices.forEach((d) => {
     const isOnline = d.status === "online";
     const schematicStatus = qs(`#schematicStatus-${d.deviceId}`);
@@ -243,9 +413,14 @@ function render() {
         schematicStatus.innerHTML = `<span class="badge-dot"></span>OFFLINE`;
       }
     }
+
+    const schematicMeta = qs(`#schematicMeta-${d.deviceId}`);
+    if (schematicMeta) {
+      schematicMeta.textContent = `Heartbeat: ${fmtAgo(d.lastSeen)} · ${d.activationCount || 0} activations`;
+    }
   });
 
-  // 4. WAKE EVENT TABLE
+  // 6. WAKE EVENT TABLE
   const eventTableBody = qs("#eventTableBody");
   if (eventTableBody) {
     if (events.length === 0) {
@@ -260,20 +435,46 @@ function render() {
         </tr>
       `;
     } else {
-      eventTableBody.innerHTML = events.map((e) => `
-        <tr>
-          <td class="cell-mono">${fmtTime(e.timestamp)}</td>
-          <td class="cell-node-id">${escapeHtml(e.deviceId)}</td>
-          <td><strong>${e.type === "COSMOS_DETECTED" ? "COSMOS_DETECTED" : escapeHtml(e.type)}</strong></td>
-          <td>${escapeHtml(e.location || "—")}</td>
-          <td class="cell-mono">${e.confidence != null ? (Number(e.confidence) * 100).toFixed(1) + "%" : "—"}</td>
-          <td class="cell-mono">${e.inferenceLatencyMs != null ? e.inferenceLatencyMs + " ms" : "—"}</td>
-        </tr>
-      `).join("");
+      eventTableBody.innerHTML = events.map((e) => {
+        const confNum = e.confidence != null ? Number(e.confidence) : null;
+        const confBadge = confNum != null
+          ? `<span class="badge ${confNum >= 0.90 ? "badge-online" : "badge-warning"}">${(confNum * 100).toFixed(1)}%</span>`
+          : "—";
+
+        const latVal = e.inferenceLatencyMs != null ? Number(e.inferenceLatencyMs) : null;
+        const latBadge = latVal != null
+          ? `<span class="cell-mono">${latVal} ms</span>`
+          : "—";
+
+        return `
+          <tr>
+            <td class="cell-mono">${fmtTime(e.timestamp)}</td>
+            <td class="cell-node-id">${escapeHtml(e.deviceId)}</td>
+            <td><span class="event-type-chip">${e.type === "COSMOS_DETECTED" ? "COSMOS_DETECTED" : escapeHtml(e.type)}</span></td>
+            <td>${escapeHtml(e.location || "—")}</td>
+            <td>${confBadge}</td>
+            <td>${latBadge}</td>
+          </tr>
+        `;
+      }).join("");
     }
   }
 
-  // 5. ASR TRANSCRIPTS TABLE
+  // 7. ASR TRANSCRIPTS TABLE & MINI ANALYTICS
+  const transcriptDistText = qs("#transcriptDistributionText");
+  if (transcriptDistText) {
+    if (transcripts.length === 0) {
+      transcriptDistText.textContent = "0 total logs";
+    } else {
+      const byDev = {};
+      transcripts.forEach((t) => {
+        byDev[t.deviceId] = (byDev[t.deviceId] || 0) + 1;
+      });
+      const parts = Object.entries(byDev).map(([id, cnt]) => `${id}: ${cnt}`).join(" · ");
+      transcriptDistText.textContent = `${transcripts.length} logs (${parts})`;
+    }
+  }
+
   const transcriptTableBody = qs("#transcriptTableBody");
   if (transcriptTableBody) {
     if (transcripts.length === 0) {
