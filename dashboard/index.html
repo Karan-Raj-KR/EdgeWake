@@ -3,508 +3,279 @@
 <head>
   <meta charset="utf-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>EdgeWake Mission Control // Centralized Fleet Observability</title>
+  <title>EdgeWake Mission Control</title>
   
-  <!-- Modern Command Fonts -->
+  <!-- Neutral Professional Typography -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Chivo+Mono:ital,wght@0,300..900;1,300..900&family=Inter:wght@300;400;500;600;700;800&family=Plus+Jakarta+Sans:wght@500;600;700;800&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
   
   <link rel="stylesheet" href="styles.css"/>
 </head>
-<body class="command-canvas">
-  <!-- Subtle Background Tactical Grid & Vignette -->
-  <div class="grid-overlay" aria-hidden="true"></div>
-  <div class="glow-orb glow-top-left" aria-hidden="true"></div>
-  <div class="glow-orb glow-bottom-right" aria-hidden="true"></div>
+<body>
 
-  <!-- TOP COMMAND BAR -->
-  <header class="topbar">
-    <div class="brand-cluster">
-      <div class="radar-badge">
-        <div class="radar-sweep"></div>
-        <div class="radar-ping"></div>
-        <svg class="radar-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-          <circle cx="12" cy="12" r="10"></circle>
-          <circle cx="12" cy="12" r="6"></circle>
-          <circle cx="12" cy="12" r="2"></circle>
-          <line x1="12" y1="2" x2="12" y2="4"></line>
-          <line x1="12" y1="20" x2="12" y2="22"></line>
-          <line x1="2" y1="12" x2="4" y2="12"></line>
-          <line x1="20" y1="12" x2="22" y2="12"></line>
-        </svg>
+  <!-- TOP APPLICATION BAR -->
+  <header class="app-header">
+    <div class="header-left">
+      <div class="brand-block">
+        <span class="brand-name">EdgeWake</span>
+        <span class="brand-divider">/</span>
+        <span class="app-title">Mission Control</span>
       </div>
-      <div>
-        <div class="brand-sub">SIH26172 · KARYO LABS</div>
-        <h1 class="brand-title">EDGEWAKE <span class="brand-highlight">MISSION CONTROL</span></h1>
+      <span class="system-badge">Model: EdgeWake-KARYO-v1</span>
+    </div>
+
+    <div class="header-center">
+      <div class="time-block">
+        <span class="time-label">UTC</span>
+        <span id="clockUtc" class="time-value">00:00:00</span>
+      </div>
+      <div class="time-separator"></div>
+      <div class="time-block">
+        <span class="time-label">Station</span>
+        <span id="clockLocal" class="time-value">00:00:00</span>
       </div>
     </div>
 
-    <!-- Center System Status & Tactical Clock -->
-    <div class="center-hud">
-      <div class="clock-pod">
-        <div class="clock-label">MISSION TIME (UTC)</div>
-        <div id="missionClockUtc" class="clock-value">00:00:00 UTC</div>
+    <div class="header-right">
+      <div id="connectionStatus" class="status-indicator status-offline">
+        <span class="status-dot"></span>
+        <span id="connectionText" class="status-label">Disconnected</span>
       </div>
-      <div class="hud-divider"></div>
-      <div class="clock-pod">
-        <div class="clock-label">LOCAL STATION</div>
-        <div id="missionClockLocal" class="clock-value">00:00:00</div>
-      </div>
-    </div>
-
-    <!-- Right Controls: Status Pill & Audio Bridge Link -->
-    <div class="top-actions">
-      <div class="api-pill" id="apiPill">
-        <span id="apiDot" class="dot"></span>
-        <span id="apiText" class="api-status-text">INITIALIZING BROKER…</span>
-      </div>
-      <a href="/mic" target="_blank" rel="noopener noreferrer" class="btn-bridge" title="Open host microphone testing client">
-        <svg class="btn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-          <path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z"></path>
-          <path d="M19 10v2a7 7 0 0 1-14 0v-2"></path>
-          <line x1="12" y1="19" x2="12" y2="22"></line>
-        </svg>
-        <span>AUDIO BRIDGE</span>
+      <a href="/mic" target="_blank" rel="noopener noreferrer" class="btn btn-secondary btn-sm">
+        Audio Bridge
       </a>
     </div>
   </header>
 
-  <!-- MAIN OPERATIONAL STAGE -->
-  <main class="console-stage">
+  <!-- MAIN OPERATIONAL WORKSPACE -->
+  <main class="workspace">
 
-    <!-- COMMAND OVERVIEW HERO -->
-    <section class="hero-console">
-      <div class="hero-details">
-        <div class="tactical-tag">
-          <span class="pulse-ring"></span>
-          <span class="tag-text">SYSTEM OPERATIONAL // FLEET MONITORING ACTIVE</span>
-        </div>
-        <h2 class="hero-headline">
-          Autonomous Wake-Word Intelligence.<br/>
-          <span class="gradient-text">Centralized Fleet Observability.</span>
-        </h2>
-        <p class="hero-description">
-          Low-power TinyML inference continuously listening for the <strong>"Cosmos"</strong> wake word at the microcontroller edge. Synchronizing hardware health telemetry, detection confidence, and subsequent speech ASR transcripts in real time.
-        </p>
-        <div class="hero-meta-row">
-          <div class="meta-item">
-            <span class="meta-label">TARGET MODEL</span>
-            <span class="meta-val">EdgeWake-KARYO-v1</span>
-          </div>
-          <div class="meta-divider"></div>
-          <div class="meta-item">
-            <span class="meta-label">WAKE WORD</span>
-            <span class="meta-val highlight-word">"Cosmos"</span>
-          </div>
-          <div class="meta-divider"></div>
-          <div class="meta-item">
-            <span class="meta-label">ARCHITECTURE</span>
-            <span class="meta-val">ESP32 Edge + Remote ASR</span>
-          </div>
-          <div class="meta-divider"></div>
-          <div class="meta-item">
-            <span class="meta-label">DEPLOYMENT MODE</span>
-            <span class="meta-val">Registered Lab Deployment</span>
-          </div>
-        </div>
+    <!-- PAGE HEADER -->
+    <div class="page-header">
+      <div>
+        <h1 class="page-title">Fleet Overview</h1>
+        <p class="page-description">Monitor deployed EdgeWake edge nodes, wake events, and device telemetry.</p>
       </div>
-
-      <!-- Tactical Wake Badge / Scanning Widget -->
-      <div class="hero-radar-widget">
-        <div class="radar-scope">
-          <div class="scope-cross-h"></div>
-          <div class="scope-cross-v"></div>
-          <div class="scope-circle c1"></div>
-          <div class="scope-circle c2"></div>
-          <div class="scope-circle c3"></div>
-          <div class="scope-sweep"></div>
-          <div class="scope-core">
-            <div class="core-dot"></div>
-          </div>
-        </div>
-        <div class="radar-info">
-          <div class="radar-title">WAKE-WORD ENGINE</div>
-          <div class="radar-word">"COSMOS"</div>
-          <div class="radar-status-bar">
-            <span class="status-indicator"></span>
-            <span class="status-legend">EDGE SENSORS ARMED</span>
-          </div>
-        </div>
-      </div>
-    </section>
-
-    <!-- KEY TELEMETRY HUD (6 STATS) -->
-    <section class="telemetry-hud" aria-label="System Metrics Overview">
-      <!-- Stat 1: Registered Nodes -->
-      <article class="stat-card">
-        <div class="stat-top">
-          <span class="stat-label">REGISTERED NODES</span>
-          <span class="stat-glyph">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect width="18" height="18" x="3" y="3" rx="2"/><path d="M3 9h18"/><path d="M9 21V9"/></svg>
-          </span>
-        </div>
-        <div class="stat-main">
-          <strong id="registeredCount" class="stat-number">2</strong>
-          <span class="stat-unit">NODES</span>
-        </div>
-        <div class="stat-foot">EW-001 · EW-002 Provisioned</div>
-      </article>
-
-      <!-- Stat 2: Online Nodes -->
-      <article class="stat-card">
-        <div class="stat-top">
-          <span class="stat-label">ONLINE FLEET</span>
-          <span class="stat-glyph active-glyph">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12.55a11 11 0 0 1 14.08 0"/><path d="M1.42 9a16 16 0 0 1 21.16 0"/><path d="M8.53 16.11a6 6 0 0 1 6.95 0"/><line x1="12" y1="20" x2="12.01" y2="20"/></svg>
-          </span>
-        </div>
-        <div class="stat-main">
-          <strong id="onlineCount" class="stat-number">0</strong>
-          <span id="onlineTotalLabel" class="stat-unit">/ 2 ACTIVE</span>
-        </div>
-        <div id="fleetStatusSub" class="stat-foot text-amber">Standby · Awaiting hardware heartbeat</div>
-      </article>
-
-      <!-- Stat 3: Total Wake Activations -->
-      <article class="stat-card">
-        <div class="stat-top">
-          <span class="stat-label">TOTAL ACTIVATIONS</span>
-          <span class="stat-glyph">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M13 2 3 14h9l-1 8 10-12h-9l1-8z"/></svg>
-          </span>
-        </div>
-        <div class="stat-main">
-          <strong id="activationCount" class="stat-number">0</strong>
-          <span class="stat-unit">TRIGGERS</span>
-        </div>
-        <div class="stat-foot">Cosmos edge detections logged</div>
-      </article>
-
-      <!-- Stat 4: Avg Inference Latency -->
-      <article class="stat-card">
-        <div class="stat-top">
-          <span class="stat-label">AVG INFERENCE LATENCY</span>
-          <span class="stat-glyph">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
-          </span>
-        </div>
-        <div class="stat-main">
-          <strong id="avgLatency" class="stat-number">—</strong>
-          <span class="stat-unit">MS</span>
-        </div>
-        <div class="stat-foot">Target: &lt; 100 ms on ESP32</div>
-      </article>
-
-      <!-- Stat 5: Latest Detection Incident -->
-      <article class="stat-card">
-        <div class="stat-top">
-          <span class="stat-label">LATEST WAKE EVENT</span>
-          <span class="stat-glyph">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>
-          </span>
-        </div>
-        <div class="stat-main">
-          <strong id="latestEvent" class="stat-number stat-compact">—</strong>
-        </div>
-        <div id="latestEventSub" class="stat-foot">No detection recorded</div>
-      </article>
-
-      <!-- Stat 6: Speech ASR Ingestion -->
-      <article class="stat-card">
-        <div class="stat-top">
-          <span class="stat-label">ASR TRANSCRIPTS</span>
-          <span class="stat-glyph">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
-          </span>
-        </div>
-        <div class="stat-main">
-          <strong id="transcriptCount" class="stat-number">0</strong>
-          <span class="stat-unit">LOGS</span>
-        </div>
-        <div class="stat-foot">Post-wake speech stream ingestion</div>
-      </article>
-    </section>
-
-    <!-- SECTION 1: EDGE FLEET CARDS & BLUEPRINT LOCATION MAP -->
-    <div class="tactical-grid-split">
-
-      <!-- LEFT: DEVICE FLEET SECTION -->
-      <section class="panel-rack" aria-label="Edge Device Fleet">
-        <div class="panel-header">
-          <div class="panel-title-group">
-            <span class="panel-kicker">REGISTERED EDGE NODES</span>
-            <h3 class="panel-title">Edge Device Fleet Rack</h3>
-          </div>
-          <div class="panel-legend">
-            <span class="legend-chip"><span class="indicator-dot dot-live"></span> ONLINE</span>
-            <span class="legend-chip"><span class="indicator-dot dot-offline"></span> OFFLINE / STANDBY</span>
-          </div>
-        </div>
-
-        <div id="deviceGrid" class="device-fleet-grid">
-          <!-- Populated dynamically via template -->
-        </div>
-      </section>
-
-      <!-- RIGHT: TACTICAL BLUEPRINT LOCATION MAP -->
-      <section class="panel-rack" aria-label="Tactical Registered Location Map">
-        <div class="panel-header">
-          <div class="panel-title-group">
-            <span class="panel-kicker">SECTOR MONITORING</span>
-            <h3 class="panel-title">Registered Deployment Map</h3>
-          </div>
-          <span class="disclaimer-badge">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>
-            ADMINISTRATIVE FLOOR PLAN · NOT LIVE GPS
-          </span>
-        </div>
-
-        <!-- Architectural Blueprint Floor Canvas -->
-        <div class="blueprint-canvas">
-          <div class="blueprint-grid-lines"></div>
-
-          <!-- Sector A: Control Room -->
-          <div class="blueprint-sector sector-a" id="sector-EW-001">
-            <div class="sector-corner corner-tl">+</div>
-            <div class="sector-corner corner-tr">+</div>
-            <div class="sector-corner corner-bl">+</div>
-            <div class="sector-corner corner-br">+</div>
-
-            <div class="sector-header">
-              <span class="sector-id">SECTOR 01</span>
-              <span class="sector-name">CONTROL ROOM</span>
-            </div>
-            <div class="sector-sub">DESK 01 · 2.4 GHz RF</div>
-
-            <div class="map-node-wrapper">
-              <div id="map-EW-001" class="map-node offline">
-                <div class="node-radar-ping"></div>
-                <div class="node-icon">
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14M4.93 4.93a10 10 0 0 0 0 14.14M15.54 8.46a5 5 0 0 1 0 7.08M8.46 8.46a5 5 0 0 0 0 7.08"/></svg>
-                </div>
-                <div class="node-info">
-                  <span class="node-tag">EW-001</span>
-                  <span class="node-state-pill">STANDBY</span>
-                </div>
-              </div>
-            </div>
-            
-            <div class="sector-footer">NODE TARGET: PRIMARY WAKE HUB</div>
-          </div>
-
-          <!-- Central Transit Corridor -->
-          <div class="blueprint-corridor">
-            <div class="corridor-line">
-              <div class="corridor-pulse"></div>
-            </div>
-            <div class="corridor-text">EDGEWAKE SECURE MESH / RF TRANSIT</div>
-            <div class="corridor-line">
-              <div class="corridor-pulse delay-1"></div>
-            </div>
-          </div>
-
-          <!-- Sector B: Operations Lab -->
-          <div class="blueprint-sector sector-b" id="sector-EW-002">
-            <div class="sector-corner corner-tl">+</div>
-            <div class="sector-corner corner-tr">+</div>
-            <div class="sector-corner corner-bl">+</div>
-            <div class="sector-corner corner-br">+</div>
-
-            <div class="sector-header">
-              <span class="sector-id">SECTOR 02</span>
-              <span class="sector-name">OPERATIONS LAB</span>
-            </div>
-            <div class="sector-sub">DESK 02 · 2.4 GHz RF</div>
-
-            <div class="map-node-wrapper">
-              <div id="map-EW-002" class="map-node offline">
-                <div class="node-radar-ping"></div>
-                <div class="node-icon">
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14M4.93 4.93a10 10 0 0 0 0 14.14M15.54 8.46a5 5 0 0 1 0 7.08M8.46 8.46a5 5 0 0 0 0 7.08"/></svg>
-                </div>
-                <div class="node-info">
-                  <span class="node-tag">EW-002</span>
-                  <span class="node-state-pill">STANDBY</span>
-                </div>
-              </div>
-            </div>
-
-            <div class="sector-footer">NODE TARGET: AUXILIARY WAKE HUB</div>
-          </div>
-        </div>
-      </section>
     </div>
 
-    <!-- SECTION 2: ACTIVITY TIMELINE & ASR INTELLIGENCE LOG -->
-    <div class="tactical-grid-split">
+    <!-- COMPACT METRIC SUMMARY STRIP -->
+    <section class="summary-strip" aria-label="Operational Summary">
+      <div class="summary-item">
+        <span class="summary-label">Registered Nodes</span>
+        <div class="summary-metric">
+          <span id="metricRegistered" class="metric-value">2</span>
+        </div>
+        <span class="summary-subtext">EW-001, EW-002</span>
+      </div>
 
-      <!-- LEFT: WAKE EVENT TIMELINE -->
-      <section class="panel-rack" aria-label="Wake Event Activity Log">
-        <div class="panel-header">
-          <div class="panel-title-group">
-            <span class="panel-kicker">INCIDENT LOG</span>
-            <h3 class="panel-title">Wake Event Timeline</h3>
+      <div class="summary-divider"></div>
+
+      <div class="summary-item">
+        <span class="summary-label">Online Nodes</span>
+        <div class="summary-metric">
+          <span id="metricOnline" class="metric-value">0</span>
+          <span class="metric-total">/ 2</span>
+        </div>
+        <span id="metricOnlineSubtext" class="summary-subtext text-warning">Awaiting heartbeat</span>
+      </div>
+
+      <div class="summary-divider"></div>
+
+      <div class="summary-item">
+        <span class="summary-label">Wake Events</span>
+        <div class="summary-metric">
+          <span id="metricEvents" class="metric-value">0</span>
+        </div>
+        <span class="summary-subtext">Cosmos detections</span>
+      </div>
+
+      <div class="summary-divider"></div>
+
+      <div class="summary-item">
+        <span class="summary-label">Avg Inference Latency</span>
+        <div class="summary-metric">
+          <span id="metricLatency" class="metric-value">—</span>
+          <span class="metric-unit">ms</span>
+        </div>
+        <span class="summary-subtext">Target: &lt; 100 ms</span>
+      </div>
+
+      <div class="summary-divider"></div>
+
+      <div class="summary-item">
+        <span class="summary-label">Speech Transcripts</span>
+        <div class="summary-metric">
+          <span id="metricTranscripts" class="metric-value">0</span>
+        </div>
+        <span class="summary-subtext">Remote ASR records</span>
+      </div>
+    </section>
+
+    <!-- DEVICE FLEET TABLE SECTION (PRIMARY COMPONENT) -->
+    <section class="content-section" aria-label="Device Fleet">
+      <div class="section-header">
+        <div>
+          <h2 class="section-title">Device Fleet</h2>
+          <p class="section-subtitle">Real-time hardware status and telemetry reported by edge microcontrollers.</p>
+        </div>
+        <div class="section-actions">
+          <span class="tag">2 Provisioned Nodes</span>
+        </div>
+      </div>
+
+      <div class="table-container">
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th style="width: 110px;">Node ID</th>
+              <th>Registered Location</th>
+              <th style="width: 110px;">Status</th>
+              <th style="width: 160px;">Heap Usage</th>
+              <th style="width: 160px;">PSRAM</th>
+              <th style="width: 120px;">Wi-Fi Signal</th>
+              <th style="width: 110px;">Latency</th>
+              <th style="width: 100px;">Uptime</th>
+              <th style="width: 100px;">Activations</th>
+              <th style="width: 150px;">Last Heartbeat</th>
+            </tr>
+          </thead>
+          <tbody id="deviceTableBody">
+            <!-- Populated via JavaScript -->
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- TWO-COLUMN WORKSPACE: EVENT LOG & DEPLOYMENT SCHEMATIC -->
+    <div class="split-grid">
+
+      <!-- LEFT: WAKE EVENT LOG -->
+      <section class="content-section" aria-label="Wake Event Log">
+        <div class="section-header">
+          <div>
+            <h2 class="section-title">Wake Events</h2>
+            <p class="section-subtitle">Chronological record of "Cosmos" detections reported by edge devices.</p>
           </div>
-          <span class="panel-sub-label">POST /api/event · Real-time Feed</span>
         </div>
 
-        <div id="eventList" class="activity-timeline-feed">
-          <!-- Populated or shows styled high-tech empty state -->
+        <div class="table-container" style="max-height: 380px;">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th style="width: 90px;">Time</th>
+                <th style="width: 90px;">Device</th>
+                <th>Type</th>
+                <th>Location</th>
+                <th style="width: 100px;">Confidence</th>
+                <th style="width: 80px;">Latency</th>
+              </tr>
+            </thead>
+            <tbody id="eventTableBody">
+              <!-- Populated or empty state -->
+            </tbody>
+          </table>
         </div>
       </section>
 
-      <!-- RIGHT: ASR SPEECH TRANSCRIPTS -->
-      <section class="panel-rack" aria-label="Remote ASR Transcripts">
-        <div class="panel-header">
-          <div class="panel-title-group">
-            <span class="panel-kicker">POST-WAKE INTELLIGENCE</span>
-            <h3 class="panel-title">Speech ASR Transcripts</h3>
+      <!-- RIGHT: REGISTERED DEPLOYMENT SCHEMATIC -->
+      <section class="content-section" aria-label="Deployment Schematic">
+        <div class="section-header">
+          <div>
+            <h2 class="section-title">Deployment Locations</h2>
+            <p class="section-subtitle">Registered facility schematic. Not live GPS tracking.</p>
           </div>
-          <span class="panel-sub-label">POST /api/transcript · Stream Feed</span>
+          <span class="tag tag-neutral">Static Deployment</span>
         </div>
 
-        <div id="transcriptList" class="activity-timeline-feed">
-          <!-- Populated or shows styled high-tech empty state -->
+        <div class="schematic-container">
+          <!-- Room A: Control Room -->
+          <div class="schematic-room" id="schematic-EW-001">
+            <div class="room-header">
+              <span class="room-label">Sector A · Bay 01</span>
+              <span class="room-title">Control Room</span>
+            </div>
+            <div class="room-body">
+              <div class="node-marker">
+                <span class="node-id">EW-001</span>
+                <span id="schematicStatus-EW-001" class="badge badge-offline">
+                  <span class="badge-dot"></span>OFFLINE
+                </span>
+              </div>
+              <div class="node-meta">
+                <span>Desk 01</span>
+                <span>2.4 GHz (CH 6)</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Schematic Link Line -->
+          <div class="schematic-link">
+            <div class="link-line"></div>
+            <span class="link-label">Facility Network Corridor</span>
+            <div class="link-line"></div>
+          </div>
+
+          <!-- Room B: Operations Lab -->
+          <div class="schematic-room" id="schematic-EW-002">
+            <div class="room-header">
+              <span class="room-label">Sector B · Bay 02</span>
+              <span class="room-title">Operations Lab</span>
+            </div>
+            <div class="room-body">
+              <div class="node-marker">
+                <span class="node-id">EW-002</span>
+                <span id="schematicStatus-EW-002" class="badge badge-offline">
+                  <span class="badge-dot"></span>OFFLINE
+                </span>
+              </div>
+              <div class="node-meta">
+                <span>Desk 02</span>
+                <span>2.4 GHz (CH 11)</span>
+              </div>
+            </div>
+          </div>
         </div>
       </section>
 
     </div>
 
-    <!-- FOOTER PROTOCOL INFO -->
-    <footer class="console-footer">
-      <div class="footer-left">
-        <span>EDGEWAKE MISSION CONTROL // VERSION 1.0.0</span>
-        <span class="bullet">·</span>
-        <span>SIH26172 PROTOTYPE</span>
-        <span class="bullet">·</span>
-        <span>KARYO LABS</span>
+    <!-- BOTTOM SECTION: ASR TRANSCRIPTS -->
+    <section class="content-section" aria-label="Speech Transcripts">
+      <div class="section-header">
+        <div>
+          <h2 class="section-title">Speech Transcripts</h2>
+          <p class="section-subtitle">Transcriptions from subsequent audio streams processed via remote ASR.</p>
+        </div>
       </div>
-      <div class="footer-right">
-        <span>STRICT TELEMETRY INTEGRITY ENFORCED · NO SYNTHETIC VALUES</span>
+
+      <div class="table-container" style="max-height: 280px;">
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th style="width: 100px;">Time</th>
+              <th style="width: 100px;">Device</th>
+              <th>Transcript</th>
+              <th style="width: 140px;">ASR Provider</th>
+            </tr>
+          </thead>
+          <tbody id="transcriptTableBody">
+            <!-- Populated or empty state -->
+          </tbody>
+        </table>
       </div>
-    </footer>
+    </section>
+
   </main>
 
-  <!-- DEVICE CARD TEMPLATE -->
-  <template id="deviceTemplate">
-    <article class="tactical-device-card">
-      <div class="card-ambient-glow"></div>
+  <!-- APP FOOTER -->
+  <footer class="app-footer">
+    <div class="footer-inner">
+      <span>EdgeWake Mission Control · Version 1.0.0</span>
+      <span>SIH26172 Prototype · Strict hardware telemetry integrity</span>
+    </div>
+  </footer>
 
-      <!-- Card Top: ID, Name, Location, Status Badge -->
-      <div class="device-card-header">
-        <div class="device-identity">
-          <div class="device-badge-row">
-            <span class="device-id-chip"></span>
-            <span class="device-type-chip">ESP32-CAM</span>
-          </div>
-          <h4 class="device-title"></h4>
-          <p class="device-location">
-            <svg class="location-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/><circle cx="12" cy="10" r="3"/></svg>
-            <span class="location-text"></span>
-          </p>
-        </div>
-        <div class="device-status-box">
-          <span class="status-pill status-offline">OFFLINE</span>
-          <span class="status-sub">NO HEARTBEAT</span>
-        </div>
-      </div>
-
-      <!-- Hardware Telemetry Gauge Rack -->
-      <div class="device-telemetry-rack">
-
-        <!-- Gauge 1: Heap RAM -->
-        <div class="telemetry-gauge">
-          <div class="gauge-head">
-            <span class="gauge-label">HEAP MEMORY</span>
-            <strong class="gauge-val heap-val">Waiting</strong>
-          </div>
-          <div class="gauge-track">
-            <div class="gauge-fill heap-fill" style="width: 0%;"></div>
-          </div>
-          <div class="gauge-foot heap-detail">Awaiting hardware metrics</div>
-        </div>
-
-        <!-- Gauge 2: PSRAM -->
-        <div class="telemetry-gauge">
-          <div class="gauge-head">
-            <span class="gauge-label">PSRAM</span>
-            <strong class="gauge-val psram-val">Waiting</strong>
-          </div>
-          <div class="gauge-track">
-            <div class="gauge-fill psram-fill" style="width: 0%;"></div>
-          </div>
-          <div class="gauge-foot psram-detail">Awaiting hardware metrics</div>
-        </div>
-
-        <!-- Gauge 3: Wi-Fi RSSI -->
-        <div class="telemetry-gauge">
-          <div class="gauge-head">
-            <span class="gauge-label">WI-FI RSSI</span>
-            <strong class="gauge-val wifi-val">Waiting</strong>
-          </div>
-          <div class="signal-meter">
-            <div class="sig-bar bar-1"></div>
-            <div class="sig-bar bar-2"></div>
-            <div class="sig-bar bar-3"></div>
-            <div class="sig-bar bar-4"></div>
-          </div>
-          <div class="gauge-foot wifi-detail">Awaiting 2.4 GHz signal</div>
-        </div>
-
-        <!-- Gauge 4: Inference Latency -->
-        <div class="telemetry-gauge">
-          <div class="gauge-head">
-            <span class="gauge-label">INFERENCE</span>
-            <strong class="gauge-val latency-val">Waiting</strong>
-          </div>
-          <div class="gauge-track">
-            <div class="gauge-fill latency-fill" style="width: 0%;"></div>
-          </div>
-          <div class="gauge-foot latency-detail">TinyML execution time</div>
-        </div>
-
-        <!-- Gauge 5: Uptime -->
-        <div class="telemetry-gauge">
-          <div class="gauge-head">
-            <span class="gauge-label">UPTIME</span>
-            <strong class="gauge-val uptime-val">Waiting</strong>
-          </div>
-          <div class="gauge-track track-discrete">
-            <div class="gauge-fill uptime-fill" style="width: 0%;"></div>
-          </div>
-          <div class="gauge-foot uptime-detail">Node system clock</div>
-        </div>
-
-        <!-- Gauge 6: Activations -->
-        <div class="telemetry-gauge">
-          <div class="gauge-head">
-            <span class="gauge-label">ACTIVATIONS</span>
-            <strong class="gauge-val activations-val">0</strong>
-          </div>
-          <div class="gauge-track">
-            <div class="gauge-fill activations-fill" style="width: 0%;"></div>
-          </div>
-          <div class="gauge-foot">Cosmos triggers recorded</div>
-        </div>
-
-      </div>
-
-      <!-- Card Foot: Firmware & Heartbeat Timestamp -->
-      <div class="device-card-footer">
-        <div class="foot-item">
-          <span class="foot-label">LAST TELEMETRY:</span>
-          <span class="last-seen-val">No telemetry received</span>
-        </div>
-        <div class="foot-item">
-          <span class="foot-label">MODEL:</span>
-          <span class="model-val">—</span>
-        </div>
-      </div>
-    </article>
-  </template>
-
-  <!-- Socket.io & Application Logic -->
   <script src="/socket.io/socket.io.js"></script>
   <script src="app.js"></script>
 </body>

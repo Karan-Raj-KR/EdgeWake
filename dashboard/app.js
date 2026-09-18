@@ -1,9 +1,10 @@
 /**
- * EDGEWAKE MISSION CONTROL // CLIENT ENGINE
- * Real-Time Telemetry, Event Dispatch, Tactical Clock, and State Visualization
+ * EDGEWAKE MISSION CONTROL // CLIENT LOGIC
+ * Real-time data synchronization, table rendering, and state management.
+ * Strictly adheres to enterprise data integrity: zero synthetic values.
  */
 
-// Establish WebSocket Link to Backend Server
+// Establish WebSocket Connection to Mission Control Server
 const socket = io();
 
 // Operational State Store
@@ -11,9 +12,8 @@ let devices = [];
 let events = [];
 let transcripts = [];
 
-// DOM Utility
+// DOM Query Helper
 const qs = (selector) => document.querySelector(selector);
-const qsa = (selector) => document.querySelectorAll(selector);
 
 /* ==========================================================================
    FORMATTERS & UTILITIES
@@ -25,25 +25,17 @@ function fmtTime(iso) {
   return d.toLocaleTimeString([], { hour12: false, hour: "2-digit", minute: "2-digit", second: "2-digit" });
 }
 
-function fmtFullTime(iso) {
-  if (!iso) return "—";
-  const d = new Date(iso);
-  const time = d.toLocaleTimeString([], { hour12: false, hour: "2-digit", minute: "2-digit", second: "2-digit" });
-  const ms = String(d.getMilliseconds()).padStart(3, "0");
-  return `${time}.${ms}`;
-}
-
 function fmtAgo(iso) {
-  if (!iso) return "No telemetry received";
+  if (!iso) return "Never";
   const sec = Math.max(0, Math.floor((Date.now() - new Date(iso).getTime()) / 1000));
-  if (sec < 3) return "Live right now";
-  if (sec < 60) return `Seen ${sec}s ago`;
-  if (sec < 3600) return `Seen ${Math.floor(sec / 60)}m ago`;
-  return `Seen ${Math.floor(sec / 3600)}h ago`;
+  if (sec < 3) return "Just now";
+  if (sec < 60) return `${sec}s ago`;
+  if (sec < 3600) return `${Math.floor(sec / 60)}m ago`;
+  return `${Math.floor(sec / 3600)}h ago`;
 }
 
 function fmtUptime(sec) {
-  if (sec == null) return "Waiting";
+  if (sec == null) return "—";
   sec = Number(sec);
   if (sec < 60) return `${sec}s`;
   if (sec < 3600) return `${Math.floor(sec / 60)}m ${sec % 60}s`;
@@ -70,310 +62,264 @@ function escapeHtml(s) {
 }
 
 /* ==========================================================================
-   MISSION CLOCK (REAL-TIME UTC & LOCAL)
+   MISSION CLOCKS (UTC & LOCAL STATION TIME)
    ========================================================================== */
 
-function updateMissionClock() {
+function updateClocks() {
   const now = new Date();
-  
-  // UTC
+
+  // UTC Time
   const utcHours = String(now.getUTCHours()).padStart(2, "0");
   const utcMinutes = String(now.getUTCMinutes()).padStart(2, "0");
   const utcSeconds = String(now.getUTCSeconds()).padStart(2, "0");
-  const utcEl = qs("#missionClockUtc");
-  if (utcEl) utcEl.textContent = `${utcHours}:${utcMinutes}:${utcSeconds} UTC`;
+  const utcEl = qs("#clockUtc");
+  if (utcEl) utcEl.textContent = `${utcHours}:${utcMinutes}:${utcSeconds}`;
 
-  // Local
-  const localEl = qs("#missionClockLocal");
-  if (localEl) {
-    localEl.textContent = now.toLocaleTimeString([], { hour12: false });
-  }
+  // Station Local Time
+  const localEl = qs("#clockLocal");
+  if (localEl) localEl.textContent = now.toLocaleTimeString([], { hour12: false });
 }
 
-setInterval(updateMissionClock, 1000);
-updateMissionClock();
+setInterval(updateClocks, 1000);
+updateClocks();
 
 /* ==========================================================================
    DASHBOARD RENDERING PIPELINE
    ========================================================================== */
 
 function render() {
-  // 1. TOP METRICS
+  // 1. SUMMARY STRIP METRICS
   const registeredCount = devices.length;
   const onlineCount = devices.filter((d) => d.status === "online").length;
-  const totalActivations = devices.reduce((sum, d) => sum + (d.activationCount || 0), 0);
 
-  // Compute real average latency if events exist
+  qs("#metricRegistered").textContent = registeredCount;
+  qs("#metricOnline").textContent = onlineCount;
+
+  const onlineSubtext = qs("#metricOnlineSubtext");
+  if (onlineSubtext) {
+    if (onlineCount === 0) {
+      onlineSubtext.textContent = "Awaiting heartbeat";
+      onlineSubtext.className = "summary-subtext text-warning";
+    } else {
+      onlineSubtext.textContent = `${onlineCount} transmitting telemetry`;
+      onlineSubtext.className = "summary-subtext text-success";
+    }
+  }
+
+  // Activations
+  const totalActivations = devices.reduce((sum, d) => sum + (d.activationCount || 0), 0);
+  qs("#metricEvents").textContent = totalActivations;
+
+  // Average Latency
   const validLatencies = events
     .map((e) => Number(e.inferenceLatencyMs))
     .filter((n) => !isNaN(n) && n > 0);
   const avgLatency = validLatencies.length
     ? Math.round(validLatencies.reduce((a, b) => a + b, 0) / validLatencies.length)
     : "—";
+  qs("#metricLatency").textContent = avgLatency;
 
-  qs("#registeredCount").textContent = registeredCount;
-  qs("#onlineCount").textContent = onlineCount;
-  qs("#onlineTotalLabel").textContent = `/ ${registeredCount} ACTIVE`;
+  // Transcripts
+  qs("#metricTranscripts").textContent = transcripts.length;
 
-  const fleetStatusSub = qs("#fleetStatusSub");
-  if (fleetStatusSub) {
-    if (onlineCount === 0) {
-      fleetStatusSub.textContent = "Standby · Awaiting hardware heartbeat";
-      fleetStatusSub.className = "stat-foot text-amber";
+  // 2. FLEET TABLE
+  const tableBody = qs("#deviceTableBody");
+  if (tableBody) {
+    if (devices.length === 0) {
+      tableBody.innerHTML = `
+        <tr class="table-empty-row">
+          <td colspan="10">
+            <div class="empty-message">
+              <span class="empty-title">No registered devices found</span>
+              <span class="empty-subtext">Add device definitions to backend/devices.json</span>
+            </div>
+          </td>
+        </tr>
+      `;
     } else {
-      fleetStatusSub.textContent = `${onlineCount} node(s) transmitting live telemetry`;
-      fleetStatusSub.className = "stat-foot highlight-word";
+      tableBody.innerHTML = devices.map((d) => {
+        const isOnline = d.status === "online";
+        const t = d.telemetry;
+
+        // Status Badge
+        const statusBadge = isOnline
+          ? `<span class="badge badge-online"><span class="badge-dot"></span>ONLINE</span>`
+          : `<span class="badge badge-offline"><span class="badge-dot"></span>OFFLINE</span>`;
+
+        // Heap Usage
+        let heapCell = "—";
+        if (t && t.heapUsedPercent != null) {
+          const usedBytes = (t.totalHeapBytes && t.freeHeapBytes != null)
+            ? `${fmtBytes(t.totalHeapBytes - t.freeHeapBytes)}`
+            : "";
+          heapCell = `
+            <div class="usage-cell">
+              <div class="usage-bar-track">
+                <div class="usage-bar-fill" style="width: ${Math.min(100, Math.max(0, t.heapUsedPercent))}%;"></div>
+              </div>
+              <span class="usage-text">${t.heapUsedPercent}% ${usedBytes ? "· " + usedBytes : ""}</span>
+            </div>
+          `;
+        }
+
+        // PSRAM Usage
+        let psramCell = "—";
+        if (t && t.psramUsedPercent != null) {
+          const usedBytes = (t.totalPsramBytes && t.freePsramBytes != null)
+            ? `${fmtBytes(t.totalPsramBytes - t.freePsramBytes)}`
+            : "";
+          psramCell = `
+            <div class="usage-cell">
+              <div class="usage-bar-track">
+                <div class="usage-bar-fill" style="width: ${Math.min(100, Math.max(0, t.psramUsedPercent))}%;"></div>
+              </div>
+              <span class="usage-text">${t.psramUsedPercent}% ${usedBytes ? "· " + usedBytes : ""}</span>
+            </div>
+          `;
+        }
+
+        // Wi-Fi Signal Bars
+        let wifiCell = "—";
+        if (t && t.wifiRSSI != null) {
+          const rssi = Number(t.wifiRSSI);
+          const activeBars = rssi >= -55 ? 4 : rssi >= -67 ? 3 : rssi >= -80 ? 2 : 1;
+          wifiCell = `
+            <div class="wifi-cell">
+              <div class="wifi-bars">
+                <span class="wifi-bar bar-1 ${activeBars >= 1 ? "active" : ""}"></span>
+                <span class="wifi-bar bar-2 ${activeBars >= 2 ? "active" : ""}"></span>
+                <span class="wifi-bar bar-3 ${activeBars >= 3 ? "active" : ""}"></span>
+                <span class="wifi-bar bar-4 ${activeBars >= 4 ? "active" : ""}"></span>
+              </div>
+              <span class="wifi-val">${rssi} dBm</span>
+            </div>
+          `;
+        }
+
+        // Inference Latency
+        const latencyCell = (t && t.inferenceLatencyMs != null)
+          ? `<span class="cell-mono">${t.inferenceLatencyMs} ms</span>`
+          : "—";
+
+        // Uptime
+        const uptimeCell = (t && t.uptimeSeconds != null)
+          ? `<span class="cell-mono">${fmtUptime(t.uptimeSeconds)}</span>`
+          : "—";
+
+        // Activations
+        const activationsCell = `<span class="cell-mono">${d.activationCount || 0}</span>`;
+
+        // Last Seen
+        const lastSeenCell = `<span class="cell-mono">${fmtAgo(d.lastSeen)}</span>`;
+
+        return `
+          <tr>
+            <td class="cell-node-id">${escapeHtml(d.deviceId)}</td>
+            <td>${escapeHtml(d.location || "Unassigned")}</td>
+            <td>${statusBadge}</td>
+            <td>${heapCell}</td>
+            <td>${psramCell}</td>
+            <td>${wifiCell}</td>
+            <td>${latencyCell}</td>
+            <td>${uptimeCell}</td>
+            <td>${activationsCell}</td>
+            <td>${lastSeenCell}</td>
+          </tr>
+        `;
+      }).join("");
     }
   }
 
-  qs("#activationCount").textContent = totalActivations;
-  qs("#avgLatency").textContent = avgLatency;
-  qs("#latestEvent").textContent = events[0] ? fmtTime(events[0].timestamp) : "—";
-  
-  const latestEventSub = qs("#latestEventSub");
-  if (latestEventSub) {
-    if (events[0]) {
-      const conf = events[0].confidence != null ? `${(Number(events[0].confidence) * 100).toFixed(1)}%` : "conf. unrecorded";
-      latestEventSub.textContent = `${events[0].deviceId} · ${conf}`;
-    } else {
-      latestEventSub.textContent = "No detection recorded";
-    }
-  }
-
-  qs("#transcriptCount").textContent = transcripts.length;
-
-  // 2. DEVICE FLEET GRID
-  const grid = qs("#deviceGrid");
-  grid.innerHTML = "";
-  const tmpl = qs("#deviceTemplate");
-
+  // 3. UPDATE SCHEMATIC ROOM BADGES
   devices.forEach((d) => {
-    const node = tmpl.content.cloneNode(true);
-    const card = node.querySelector(".tactical-device-card");
     const isOnline = d.status === "online";
-
-    if (isOnline) card.classList.add("online");
-
-    // Identity
-    node.querySelector(".device-id-chip").textContent = d.deviceId;
-    node.querySelector(".device-title").textContent = d.name || d.deviceId;
-    node.querySelector(".location-text").textContent = d.location || "Unassigned";
-
-    // Status Pill
-    const pill = node.querySelector(".status-pill");
-    const statusSub = node.querySelector(".status-sub");
-    if (isOnline) {
-      pill.textContent = "ONLINE";
-      pill.className = "status-pill status-online";
-      statusSub.textContent = "TRANSMITTING";
-    } else {
-      pill.textContent = "OFFLINE";
-      pill.className = "status-pill status-offline";
-      statusSub.textContent = "NO HEARTBEAT";
-    }
-
-    // Telemetry Gauges
-    const t = d.telemetry;
-
-    // Heap
-    const heapVal = node.querySelector(".heap-val");
-    const heapFill = node.querySelector(".heap-fill");
-    const heapDetail = node.querySelector(".heap-detail");
-    if (t && t.heapUsedPercent != null) {
-      heapVal.textContent = `${t.heapUsedPercent}%`;
-      heapFill.style.width = `${Math.min(100, Math.max(0, t.heapUsedPercent))}%`;
-      heapFill.classList.remove("waiting");
-      if (t.totalHeapBytes && t.freeHeapBytes != null) {
-        heapDetail.textContent = `${fmtBytes(t.totalHeapBytes - t.freeHeapBytes)} / ${fmtBytes(t.totalHeapBytes)} used`;
-      }
-    } else {
-      heapVal.textContent = "Waiting";
-      heapFill.classList.add("waiting");
-      heapDetail.textContent = "Awaiting hardware metrics";
-    }
-
-    // PSRAM
-    const psramVal = node.querySelector(".psram-val");
-    const psramFill = node.querySelector(".psram-fill");
-    const psramDetail = node.querySelector(".psram-detail");
-    if (t && t.psramUsedPercent != null) {
-      psramVal.textContent = `${t.psramUsedPercent}%`;
-      psramFill.style.width = `${Math.min(100, Math.max(0, t.psramUsedPercent))}%`;
-      psramFill.classList.remove("waiting");
-      if (t.totalPsramBytes && t.freePsramBytes != null) {
-        psramDetail.textContent = `${fmtBytes(t.totalPsramBytes - t.freePsramBytes)} / ${fmtBytes(t.totalPsramBytes)} used`;
-      }
-    } else {
-      psramVal.textContent = "Waiting";
-      psramFill.classList.add("waiting");
-      psramDetail.textContent = "Awaiting hardware metrics";
-    }
-
-    // Wi-Fi RSSI
-    const wifiVal = node.querySelector(".wifi-val");
-    const wifiDetail = node.querySelector(".wifi-detail");
-    const sigBars = node.querySelectorAll(".sig-bar");
-    if (t && t.wifiRSSI != null) {
-      const rssi = Number(t.wifiRSSI);
-      wifiVal.textContent = `${rssi} dBm`;
-      wifiDetail.textContent = rssi >= -60 ? "Strong Signal Link" : rssi >= -75 ? "Moderate Signal Link" : "Weak Signal Link";
-      
-      const barsToLight = rssi >= -55 ? 4 : rssi >= -67 ? 3 : rssi >= -80 ? 2 : 1;
-      sigBars.forEach((bar, idx) => {
-        if (idx < barsToLight) bar.classList.add("lit");
-        else bar.classList.remove("lit");
-      });
-    } else {
-      wifiVal.textContent = "Waiting";
-      wifiDetail.textContent = "Awaiting 2.4 GHz signal";
-      sigBars.forEach((bar) => bar.classList.remove("lit"));
-    }
-
-    // Inference Latency
-    const latencyVal = node.querySelector(".latency-val");
-    const latencyFill = node.querySelector(".latency-fill");
-    const latencyDetail = node.querySelector(".latency-detail");
-    if (t && t.inferenceLatencyMs != null) {
-      latencyVal.textContent = `${t.inferenceLatencyMs} ms`;
-      const pct = Math.min(100, Math.round((Number(t.inferenceLatencyMs) / 120) * 100));
-      latencyFill.style.width = `${pct}%`;
-      latencyFill.classList.remove("waiting");
-      latencyDetail.textContent = Number(t.inferenceLatencyMs) < 100 ? "Nominal (<100ms threshold)" : "High Latency Warning";
-    } else {
-      latencyVal.textContent = "Waiting";
-      latencyFill.classList.add("waiting");
-      latencyDetail.textContent = "TinyML execution benchmark";
-    }
-
-    // Uptime
-    const uptimeVal = node.querySelector(".uptime-val");
-    const uptimeFill = node.querySelector(".uptime-fill");
-    const uptimeDetail = node.querySelector(".uptime-detail");
-    if (t && t.uptimeSeconds != null) {
-      uptimeVal.textContent = fmtUptime(t.uptimeSeconds);
-      uptimeFill.style.width = "100%";
-      uptimeFill.classList.remove("waiting");
-      uptimeDetail.textContent = "Node clock synchronized";
-    } else {
-      uptimeVal.textContent = "Waiting";
-      uptimeFill.classList.add("waiting");
-      uptimeDetail.textContent = "Node system clock";
-    }
-
-    // Activations
-    const activationsVal = node.querySelector(".activations-val");
-    const activationsFill = node.querySelector(".activations-fill");
-    activationsVal.textContent = d.activationCount || 0;
-    const actPct = Math.min(100, (d.activationCount || 0) * 10);
-    activationsFill.style.width = `${actPct}%`;
-
-    // Footer
-    node.querySelector(".last-seen-val").textContent = fmtAgo(d.lastSeen);
-    node.querySelector(".model-val").textContent = (t && t.modelVersion) ? t.modelVersion : "EdgeWake-KARYO-v1";
-
-    grid.appendChild(node);
-
-    // 3. UPDATE BLUEPRINT LOCATION MAP
-    const mapNode = document.getElementById(`map-${d.deviceId}`);
-    if (mapNode) {
-      mapNode.classList.toggle("online", isOnline);
-      mapNode.classList.toggle("offline", !isOnline);
-      const pillState = mapNode.querySelector(".node-state-pill");
-      if (pillState) {
-        pillState.textContent = isOnline ? "ONLINE // ACTIVE" : "STANDBY";
+    const schematicStatus = qs(`#schematicStatus-${d.deviceId}`);
+    if (schematicStatus) {
+      if (isOnline) {
+        schematicStatus.className = "badge badge-online";
+        schematicStatus.innerHTML = `<span class="badge-dot"></span>ONLINE`;
+      } else {
+        schematicStatus.className = "badge badge-offline";
+        schematicStatus.innerHTML = `<span class="badge-dot"></span>OFFLINE`;
       }
     }
   });
 
-  // 4. TIMELINE EVENT FEED
-  const eventList = qs("#eventList");
-  if (!events.length) {
-    eventList.innerHTML = `
-      <div class="feed-empty-state">
-        <div class="empty-radar-graphic">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
-            <circle cx="12" cy="12" r="10"></circle>
-            <circle cx="12" cy="12" r="6"></circle>
-            <line x1="12" y1="2" x2="12" y2="12"></line>
-            <line x1="12" y1="12" x2="19" y2="19"></line>
-          </svg>
-        </div>
-        <div class="empty-state-title">Awaiting Edge Wake Events</div>
-        <div class="empty-state-desc">Edge nodes are armed for the "Cosmos" wake word. Detected events will appear here with confidence score and latency.</div>
-      </div>
-    `;
-  } else {
-    eventList.innerHTML = events.map((e) => `
-      <div class="feed-event-card">
-        <div class="event-timestamp">${fmtFullTime(e.timestamp)}</div>
-        <div class="event-details">
-          <strong>${e.type === "COSMOS_DETECTED" ? "COSMOS WAKE WORD DETECTED" : escapeHtml(e.type)}</strong>
-          <div class="event-meta">
-            ${escapeHtml(e.deviceId)} · ${escapeHtml(e.location || "Unknown Sector")} · Latency: ${
-              e.inferenceLatencyMs != null ? `${e.inferenceLatencyMs} ms` : "unrecorded"
-            }
-          </div>
-        </div>
-        <div class="confidence-pill">
-          ${e.confidence != null ? `${(Number(e.confidence) * 100).toFixed(1)}% CONF` : "EVENT"}
-        </div>
-      </div>
-    `).join("");
+  // 4. WAKE EVENT TABLE
+  const eventTableBody = qs("#eventTableBody");
+  if (eventTableBody) {
+    if (events.length === 0) {
+      eventTableBody.innerHTML = `
+        <tr class="table-empty-row">
+          <td colspan="6">
+            <div class="empty-message">
+              <span class="empty-title">No wake events received yet</span>
+              <span class="empty-subtext">Events will appear after a connected node reports COSMOS_DETECTED.</span>
+            </div>
+          </td>
+        </tr>
+      `;
+    } else {
+      eventTableBody.innerHTML = events.map((e) => `
+        <tr>
+          <td class="cell-mono">${fmtTime(e.timestamp)}</td>
+          <td class="cell-node-id">${escapeHtml(e.deviceId)}</td>
+          <td><strong>${e.type === "COSMOS_DETECTED" ? "COSMOS_DETECTED" : escapeHtml(e.type)}</strong></td>
+          <td>${escapeHtml(e.location || "—")}</td>
+          <td class="cell-mono">${e.confidence != null ? (Number(e.confidence) * 100).toFixed(1) + "%" : "—"}</td>
+          <td class="cell-mono">${e.inferenceLatencyMs != null ? e.inferenceLatencyMs + " ms" : "—"}</td>
+        </tr>
+      `).join("");
+    }
   }
 
-  // 5. ASR TRANSCRIPTS FEED
-  const transcriptList = qs("#transcriptList");
-  if (!transcripts.length) {
-    transcriptList.innerHTML = `
-      <div class="feed-empty-state">
-        <div class="empty-waveform-graphic">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
-            <path d="M2 10v4"></path>
-            <path d="M6 7v10"></path>
-            <path d="M10 4v16"></path>
-            <path d="M14 8v8"></path>
-            <path d="M18 6v12"></path>
-            <path d="M22 10v4"></path>
-          </svg>
-        </div>
-        <div class="empty-state-title">ASR Pipeline Standing By</div>
-        <div class="empty-state-desc">Post-wake audio transcription pipeline is ready. Real speech transcripts submitted to <code>/api/transcript</code> will stream here.</div>
-      </div>
-    `;
-  } else {
-    transcriptList.innerHTML = transcripts.map((t) => `
-      <div class="feed-transcript-card">
-        <div class="transcript-header">
-          <div class="transcript-origin">
-            <span class="transcript-node-chip">${escapeHtml(t.deviceId)}</span>
-            <span class="transcript-time">${fmtFullTime(t.timestamp)}</span>
-          </div>
-          <span class="transcript-provider">${escapeHtml(t.provider || "ASR-INGEST")}</span>
-        </div>
-        <div class="transcript-body">
-          "${escapeHtml(t.text)}"
-        </div>
-      </div>
-    `).join("");
+  // 5. ASR TRANSCRIPTS TABLE
+  const transcriptTableBody = qs("#transcriptTableBody");
+  if (transcriptTableBody) {
+    if (transcripts.length === 0) {
+      transcriptTableBody.innerHTML = `
+        <tr class="table-empty-row">
+          <td colspan="4">
+            <div class="empty-message">
+              <span class="empty-title">No speech transcripts received yet</span>
+              <span class="empty-subtext">Transcripts will appear when audio is processed via /api/transcript.</span>
+            </div>
+          </td>
+        </tr>
+      `;
+    } else {
+      transcriptTableBody.innerHTML = transcripts.map((t) => `
+        <tr>
+          <td class="cell-mono" style="white-space: nowrap;">${fmtTime(t.timestamp)}</td>
+          <td class="cell-node-id">${escapeHtml(t.deviceId)}</td>
+          <td>"${escapeHtml(t.text)}"</td>
+          <td><span class="tag tag-neutral">${escapeHtml(t.provider || "external-asr")}</span></td>
+        </tr>
+      `).join("");
+    }
   }
 }
 
 /* ==========================================================================
-   SOCKET.IO EVENT LISTENERS
+   SOCKET.IO EVENT HANDLERS
    ========================================================================== */
 
 socket.on("connect", () => {
-  const dot = qs("#apiDot");
-  const text = qs("#apiText");
-  if (dot) dot.classList.add("live");
-  if (text) text.textContent = "MISSION CONTROL ONLINE";
+  const indicator = qs("#connectionStatus");
+  const text = qs("#connectionText");
+  if (indicator) {
+    indicator.className = "status-indicator status-online";
+  }
+  if (text) text.textContent = "Connected";
 });
 
 socket.on("disconnect", () => {
-  const dot = qs("#apiDot");
-  const text = qs("#apiText");
-  if (dot) dot.classList.remove("live");
-  if (text) text.textContent = "BROKER DISCONNECTED";
+  const indicator = qs("#connectionStatus");
+  const text = qs("#connectionText");
+  if (indicator) {
+    indicator.className = "status-indicator status-offline";
+  }
+  if (text) text.textContent = "Disconnected";
 });
 
 socket.on("snapshot", (data) => {
@@ -402,5 +348,5 @@ socket.on("transcript:new", (t) => {
   render();
 });
 
-// Periodic re-render to update relative time ("Seen X seconds ago") and clock
+// Periodic re-render every second to refresh relative timestamps ("3s ago")
 setInterval(render, 1000);
