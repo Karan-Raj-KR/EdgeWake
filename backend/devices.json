@@ -1,0 +1,12 @@
+{
+  "EW-001": {
+    "deviceId": "EW-001",
+    "name": "EdgeWake Node 01",
+    "location": "Control Room \u00b7 Desk 01"
+  },
+  "EW-002": {
+    "deviceId": "EW-002",
+    "name": "EdgeWake Node 02",
+    "location": "Operations Lab \u00b7 Desk 02"
+  }
+}

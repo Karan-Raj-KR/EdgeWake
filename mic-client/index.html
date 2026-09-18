@@ -1,0 +1,64 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>EdgeWake Audio Bridge</title>
+<style>
+body{margin:0;background:#07110f;color:#eafff7;font-family:system-ui,-apple-system,sans-serif;display:grid;place-items:center;min-height:100vh}
+.card{width:min(560px,90vw);border:1px solid #1a4034;border-radius:24px;background:#0c1714;padding:28px}
+small{color:#60f7b0;letter-spacing:.15em;font-weight:800}h1{margin:8px 0}p{color:#8aaba0}
+label{display:block;margin:18px 0 8px;color:#8aaba0;font-size:13px}select,input,button,textarea{width:100%;box-sizing:border-box;border-radius:12px;border:1px solid #21493c;background:#09130f;color:#eafff7;padding:12px}
+button{margin-top:12px;background:#60f7b0;color:#06110d;font-weight:800;cursor:pointer}
+.secondary{background:#12231d;color:#b8d3c9}.row{display:grid;grid-template-columns:1fr 1fr;gap:10px}.status{margin-top:14px;color:#8aaba0;font-size:13px}
+</style>
+</head>
+<body>
+<div class="card">
+<small>EDGEWAKE PROTOTYPE</small>
+<h1>Audio Bridge</h1>
+<p>This client uses the Mac/phone microphone because ESP32-CAM has no onboard microphone. It does not pretend the board has one.</p>
+
+<label>Target device</label>
+<select id="device">
+  <option>EW-001</option>
+  <option>EW-002</option>
+</select>
+
+<div class="row">
+  <button id="start">Start microphone</button>
+  <button id="stop" class="secondary" disabled>Stop</button>
+</div>
+
+<label>ASR transcript test</label>
+<textarea id="text" rows="4" placeholder="Paste an ASR result here during integration testing"></textarea>
+<button id="sendTranscript" class="secondary">Send transcript to Mission Control</button>
+<div id="status" class="status">Microphone idle.</div>
+</div>
+<script>
+let stream=null;
+const s=document.getElementById("status");
+document.getElementById("start").onclick=async()=>{
+  try{
+    stream=await navigator.mediaDevices.getUserMedia({audio:true});
+    s.textContent="Microphone connected. Audio capture is real; ESP32 forwarding will be wired during hardware integration.";
+    document.getElementById("start").disabled=true;
+    document.getElementById("stop").disabled=false;
+  }catch(e){s.textContent="Microphone permission failed: "+e.message}
+}
+document.getElementById("stop").onclick=()=>{
+  if(stream) stream.getTracks().forEach(t=>t.stop());
+  stream=null;s.textContent="Microphone stopped.";
+  document.getElementById("start").disabled=false;
+  document.getElementById("stop").disabled=true;
+}
+document.getElementById("sendTranscript").onclick=async()=>{
+  const text=document.getElementById("text").value.trim();
+  if(!text)return;
+  const deviceId=document.getElementById("device").value;
+  const r=await fetch("/api/transcript",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({deviceId,text,provider:"integration-test"})});
+  s.textContent=r.ok?"Transcript sent to Mission Control.":"Transcript API failed.";
+}
+</script>
+</body>
+</html>

@@ -1,0 +1,125 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1"/>
+  <title>EdgeWake Mission Control</title>
+  <link rel="stylesheet" href="styles.css"/>
+</head>
+<body>
+  <header class="topbar">
+    <div>
+      <div class="eyebrow">KARYO · SIH26172</div>
+      <h1>EdgeWake Mission Control</h1>
+    </div>
+    <div class="api-pill"><span id="apiDot" class="dot"></span><span id="apiText">Connecting…</span></div>
+  </header>
+
+  <main>
+    <section class="hero">
+      <div>
+        <div class="kicker">FLEET OVERVIEW</div>
+        <h2>Local wake-word intelligence.<br/>Centralized mission visibility.</h2>
+        <p>Only real device telemetry is shown. Offline nodes remain visible with their registered deployment location.</p>
+      </div>
+      <div class="hero-badge">
+        <span class="pulse"></span>
+        <div><strong>COSMOS</strong><small>Wake word</small></div>
+      </div>
+    </section>
+
+    <section class="stats">
+      <article><span>Registered</span><strong id="registeredCount">2</strong></article>
+      <article><span>Online</span><strong id="onlineCount">0</strong></article>
+      <article><span>Total activations</span><strong id="activationCount">0</strong></article>
+      <article><span>Latest event</span><strong id="latestEvent">—</strong></article>
+    </section>
+
+    <section class="grid-2">
+      <div class="panel">
+        <div class="panel-head">
+          <div>
+            <div class="kicker">EDGE NODES</div>
+            <h3>Deployment fleet</h3>
+          </div>
+          <span class="muted">Live via heartbeat</span>
+        </div>
+        <div id="deviceGrid" class="device-grid"></div>
+      </div>
+
+      <div class="panel">
+        <div class="panel-head">
+          <div>
+            <div class="kicker">LOCATION VIEW</div>
+            <h3>Registered deployment map</h3>
+          </div>
+          <span class="muted">Not GPS tracking</span>
+        </div>
+        <div class="floor">
+          <div class="room">
+            <span>CONTROL ROOM</span>
+            <div id="map-EW-001" class="map-node offline">EW-001</div>
+          </div>
+          <div class="corridor">EDGEWAKE NETWORK</div>
+          <div class="room">
+            <span>OPERATIONS LAB</span>
+            <div id="map-EW-002" class="map-node offline">EW-002</div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="grid-2">
+      <div class="panel">
+        <div class="panel-head">
+          <div>
+            <div class="kicker">ACTIVITY</div>
+            <h3>Wake event timeline</h3>
+          </div>
+          <span class="muted">Newest first</span>
+        </div>
+        <div id="eventList" class="timeline empty-state">No wake events yet.</div>
+      </div>
+
+      <div class="panel">
+        <div class="panel-head">
+          <div>
+            <div class="kicker">REMOTE ASR</div>
+            <h3>Transcripts</h3>
+          </div>
+          <span class="muted">POST /api/transcript</span>
+        </div>
+        <div id="transcriptList" class="timeline empty-state">No ASR transcripts yet.</div>
+      </div>
+    </section>
+  </main>
+
+  <template id="deviceTemplate">
+    <article class="device-card">
+      <div class="device-top">
+        <div>
+          <div class="device-id"></div>
+          <h4 class="device-name"></h4>
+          <p class="device-location"></p>
+        </div>
+        <span class="status-pill">OFFLINE</span>
+      </div>
+      <div class="telemetry">
+        <div><span>Heap</span><strong class="heap">Waiting</strong></div>
+        <div><span>PSRAM</span><strong class="psram">Waiting</strong></div>
+        <div><span>Wi-Fi</span><strong class="wifi">Waiting</strong></div>
+        <div><span>Inference</span><strong class="latency">Waiting</strong></div>
+        <div><span>Uptime</span><strong class="uptime">Waiting</strong></div>
+        <div><span>Activations</span><strong class="activations">0</strong></div>
+      </div>
+      <div class="device-foot">
+        <span class="last-seen">No telemetry received</span>
+        <span class="model">Model: —</span>
+      </div>
+    </article>
+  </template>
+
+  <script src="/socket.io/socket.io.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
